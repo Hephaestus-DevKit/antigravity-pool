@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id             String         @id @default(uuid())
+  name           String
+  email          String?
+  refreshToken   String
+  status         String         @default("active") // 'active', 'exhausted', 'invalid'
+  lastUsed       DateTime       @default(now())
+  usageCount     Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  quotaStatus    String         @default("unknown")
+  quotaResetAt   DateTime?
+  quotaMessage   String?
+  quotaCheckedAt DateTime?
+  leaseUntil     DateTime?
+  leases         AccountLease[]
+  RequestLog     RequestLog[]
+}
+
+model AccountLease {
+  id         String   @id @default(uuid())
+  accountId  String
+  slot       Int
+  leaseUntil DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, slot])
+  @@index([leaseUntil])
+}
+
+model RequestLog {
+  id               String   @id @default(uuid())
+  accountId        String
+  model            String
+  statusCode       Int
+  latency          Int      // in ms
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  error            String?
+  timestamp        DateTime @default(now())
+  account          Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([timestamp])
+}
